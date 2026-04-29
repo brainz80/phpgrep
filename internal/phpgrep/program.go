@@ -23,6 +23,7 @@ import (
 	"github.com/VKCOM/noverify/src/phpdoc"
 	"github.com/VKCOM/noverify/src/phpgrep"
 	"github.com/VKCOM/noverify/src/quickfix"
+	"github.com/VKCOM/php-parser/pkg/version"
 )
 
 type match struct {
@@ -48,6 +49,8 @@ type program struct {
 	exclude        *regexp.Regexp
 	outputTemplate *template.Template
 	matches        int64
+
+	phpVersion *version.Version
 
 	cpuProfile bytes.Buffer
 }
@@ -94,6 +97,12 @@ func (p *program) validateFlags() error {
 	for _, e := range strings.Split(p.args.phpFileExt, ",") {
 		p.args.phpFileExtList = append(p.args.phpFileExtList, "."+strings.TrimSpace(e))
 	}
+
+	phpVersion, err := version.New(p.args.phpVersion)
+	if err != nil {
+		return fmt.Errorf("invalid php-version %q: %v", p.args.phpVersion, err)
+	}
+	p.phpVersion = phpVersion
 
 	return nil
 }
@@ -178,6 +187,7 @@ func (p *program) compilePattern() error {
 			irconv:         irconv.NewConverter(phpdoc.NewTypeParser()),
 			needMatchData:  needMatchData,
 			needMatchLine:  needMatchLine,
+			phpVersion:     p.phpVersion,
 		}
 	}
 
