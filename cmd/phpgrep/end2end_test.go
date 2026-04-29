@@ -298,6 +298,7 @@ func TestEnd2End(t *testing.T) {
 					phpgrepArgs = append(phpgrepArgs, "--strict-syntax")
 				}
 				phpgrepArgs = append(phpgrepArgs, "--no-color")
+				phpgrepArgs = append(phpgrepArgs, "--workers", "1")
 				targets := "."
 				if test.targets != "" {
 					targets = test.targets
