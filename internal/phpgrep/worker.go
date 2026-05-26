@@ -1,14 +1,19 @@
 package phpgrep
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/VKCOM/noverify/src/ir"
 	"github.com/VKCOM/noverify/src/ir/irconv"
-	"github.com/VKCOM/noverify/src/php/parseutil"
 	"github.com/VKCOM/noverify/src/phpgrep"
+	"github.com/VKCOM/php-parser/pkg/ast"
+	"github.com/VKCOM/php-parser/pkg/conf"
+	phperrors "github.com/VKCOM/php-parser/pkg/errors"
+	"github.com/VKCOM/php-parser/pkg/parser"
 	"github.com/VKCOM/php-parser/pkg/position"
+	"github.com/VKCOM/php-parser/pkg/version"
 )
 
 type worker struct {
@@ -20,8 +25,9 @@ type worker struct {
 	needMatchData bool
 	needMatchLine bool
 
-	irconv  *irconv.Converter
-	matches []match
+	irconv     *irconv.Converter
+	phpVersion *version.Version
+	matches    []match
 
 	data     []byte
 	filename string
@@ -49,9 +55,25 @@ func (w *worker) grepFile(filename string) (int, error) {
 }
 
 func (w *worker) parseFile(data []byte) (*ir.Root, error) {
-	root, err := parseutil.ParseFile(data)
+	var parseErrors []*phperrors.Error
+	rootNode, err := parser.Parse(data, conf.Config{
+		Version: w.phpVersion,
+		ErrorHandlerFunc: func(e *phperrors.Error) {
+			parseErrors = append(parseErrors, e)
+		},
+	})
 	if err != nil {
 		return nil, err
+	}
+	if len(parseErrors) != 0 {
+		return nil, errors.New(parseErrors[0].String())
+	}
+	if rootNode == nil {
+		return nil, fmt.Errorf("file has incorrect syntax and cannot be parsed")
+	}
+	root, ok := rootNode.(*ast.Root)
+	if !ok {
+		return nil, fmt.Errorf("unexpected parser output: %T", rootNode)
 	}
 	return w.irconv.ConvertRoot(root), nil
 }

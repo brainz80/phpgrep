@@ -33,6 +33,8 @@ type arguments struct {
 	phpFileExt     string
 	phpFileExtList []string
 
+	phpVersion string
+
 	targets        string
 	pattern        string
 	filters        []string
@@ -173,6 +175,8 @@ Supported command-line flags:
 		`exclude the results listed in the file`)
 	flag.StringVar(&args.phpFileExt, "php-ext", "php,php5,inc,phtml",
 		`a comma-separated list of extensions to scan`)
+	flag.StringVar(&args.phpVersion, "php-version", "8.0",
+		`PHP language version used to parse files (e.g. "5.6", "7.4", "8.0", "8.1", "8.2")`)
 
 	flag.StringVar(&args.progressMode, "progress", "update",
 		`progress printing mode: "update", "append" or "none"`)
