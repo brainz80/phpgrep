@@ -3,7 +3,7 @@ package phpgrep
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/VKCOM/noverify/src/ir"
 	"github.com/VKCOM/noverify/src/ir/irconv"
@@ -37,7 +37,7 @@ type worker struct {
 }
 
 func (w *worker) grepFile(filename string) (int, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return 0, fmt.Errorf("read file: %v", err)
 	}

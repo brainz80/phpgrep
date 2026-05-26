@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -122,7 +121,7 @@ func (p *program) startProfiling() error {
 func (p *program) finishProfiling() error {
 	if p.args.cpuProfile != "" {
 		pprof.StopCPUProfile()
-		err := ioutil.WriteFile(p.args.cpuProfile, p.cpuProfile.Bytes(), 0666)
+		err := os.WriteFile(p.args.cpuProfile, p.cpuProfile.Bytes(), 0666)
 		if err != nil {
 			return fmt.Errorf("write CPU profile: %v", err)
 		}
@@ -297,7 +296,7 @@ func (p *program) replaceMatches() error {
 		}
 	}
 	for filename, fixes := range editsByFilename {
-		contents, err := ioutil.ReadFile(filename)
+		contents, err := os.ReadFile(filename)
 		if err != nil {
 			return fmt.Errorf("read %s: %v", filename, err)
 		}
