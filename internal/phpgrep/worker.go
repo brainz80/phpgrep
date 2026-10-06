@@ -47,14 +47,53 @@ func (w *worker) grepFile(filename string) (int, error) {
 		return 0, err
 	}
 
-	w.data = data
 	w.filename = filename
 	w.n = 0
 	root.Walk(w)
 	return w.n, nil
 }
 
+// parsePanicError is a panic raised by the PHP parser while reading one file.
+// It is returned as an error so the rest of the search can continue.
+type parsePanicError struct {
+	recovered any
+}
+
+func (e *parsePanicError) Error() string {
+	return fmt.Sprintf("parser panic: %v", e.recovered)
+}
+
 func (w *worker) parseFile(data []byte) (*ir.Root, error) {
+	root, err := w.finishParse(data)
+	if err == nil {
+		w.data = data
+		return root, nil
+	}
+	var panicErr *parsePanicError
+	if !errors.As(err, &panicErr) {
+		return nil, err
+	}
+
+	// php-parser's ungetWhile reads one byte past EOF when an "&" token
+	// ends the file (for example "$a & 1" or "function f(&\n"). Parsing the
+	// same bytes with a trailing semicolon keeps that read in range. When
+	// that second parse is clean, search the file; otherwise skip it.
+	padded := append(append([]byte(nil), data...), ';')
+	root, err = w.finishParse(padded)
+	if err != nil {
+		return nil, panicErr
+	}
+	w.data = padded
+	return root, nil
+}
+
+func (w *worker) finishParse(data []byte) (root *ir.Root, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = &parsePanicError{recovered: recovered}
+		}
+	}()
+
 	var parseErrors []*phperrors.Error
 	rootNode, err := parser.Parse(data, conf.Config{
 		Version: w.phpVersion,
@@ -71,12 +110,12 @@ func (w *worker) parseFile(data []byte) (*ir.Root, error) {
 	if rootNode == nil {
 		return nil, fmt.Errorf("file has incorrect syntax and cannot be parsed")
 	}
-	root, ok := rootNode.(*ast.Root)
+	astRoot, ok := rootNode.(*ast.Root)
 	if !ok {
 		return nil, fmt.Errorf("unexpected parser output: %T", rootNode)
 	}
-	rewriteComplexEncapsedVars(root)
-	return w.irconv.ConvertRoot(root), nil
+	rewriteComplexEncapsedVars(astRoot)
+	return w.irconv.ConvertRoot(astRoot), nil
 }
 
 func (w *worker) LeaveNode(ir.Node) {}
