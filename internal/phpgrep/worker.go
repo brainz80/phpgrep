@@ -75,6 +75,7 @@ func (w *worker) parseFile(data []byte) (*ir.Root, error) {
 	if !ok {
 		return nil, fmt.Errorf("unexpected parser output: %T", rootNode)
 	}
+	rewriteComplexEncapsedVars(root)
 	return w.irconv.ConvertRoot(root), nil
 }
 
